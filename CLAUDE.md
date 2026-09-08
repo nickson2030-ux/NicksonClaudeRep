@@ -6,7 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A Kanban board for a fictional "UOB IT PMO" — an internal demo/training tool, not a real system.
 The entire project is one file: [index.html](index.html) (~52 KB). There is no package.json, no
-git repo, no dependencies, and no test suite.
+dependencies, and no test suite. The repo is on GitHub at
+`nickson2030-ux/NicksonClaudeRep`; the default branch is `main`.
+
+Git identity is set **repo-locally**, not globally, and uses a GitHub noreply address to keep the
+user's real email out of public commit history — preserve that when committing.
 
 It is deliberately branding-neutral: a text wordmark only, generic corporate blue. Do not add a UOB
 logo, trademark, or anything that imitates an official UOB system.
