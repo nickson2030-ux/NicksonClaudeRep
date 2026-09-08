@@ -7,11 +7,43 @@
 <meta name="description" content="Kanban board demo for an internal IT PMO. Vanilla HTML, CSS and JavaScript in a single file.">
 
 <!--
+  ============================================================
+  CONTENT SECURITY POLICY — defence in depth
+  ------------------------------------------------------------
+  There is no server here (the file opens from disk or from
+  GitHub Pages), so response headers are not available. A meta
+  CSP is the only lever, and it still buys real containment:
+
+    default-src 'none'  nothing loads unless allowed below
+    connect-src         the FormSubmit endpoint and NOTHING else,
+                        so injected script cannot exfiltrate data
+                        to an attacker-controlled origin
+    form-action 'none'  a form cannot be repointed at another host
+    base-uri 'none'     blocks <base> injection
+    object-src 'none'   no plugins / embeds
+
+  'unsafe-inline' is unavoidable for script-src and style-src: the
+  whole app IS one inline block, and hashing it would break the
+  "edit the file and reload" workflow this training tool is for.
+  It is deliberately accepted — the exfiltration and navigation
+  limits above are what this policy is actually buying.
+
+  NOTE: frame-ancestors is IGNORED in a meta CSP, so clickjacking
+  cannot be blocked from inside the file. Accepted: the board has
+  no auth, no privileged action, and no data worth framing for.
+  ============================================================
+-->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src https://formsubmit.co; form-action 'none'; base-uri 'none'; object-src 'none'">
+
+<!-- Do not leak the page URL to FormSubmit in a Referer header. -->
+<meta name="referrer" content="no-referrer">
+
+<!--
   Inline data-URI favicon (three kanban columns). Browsers request /favicon.ico
   on every page load; declaring one here stops that 404 without adding an
   external file, keeping the "no external resources" rule intact.
 -->
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230d2a4d'/%3E%3Crect x='6' y='9' width='5' height='14' rx='1.5' fill='%238fb8e8'/%3E%3Crect x='13.5' y='9' width='5' height='10' rx='1.5' fill='%23ffffff'/%3E%3Crect x='21' y='9' width='5' height='6' rx='1.5' fill='%238fb8e8'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%232e1065'/%3E%3Crect x='6' y='9' width='5' height='14' rx='1.5' fill='%23c4b5fd'/%3E%3Crect x='13.5' y='9' width='5' height='10' rx='1.5' fill='%23ffffff'/%3E%3Crect x='21' y='9' width='5' height='6' rx='1.5' fill='%23c4b5fd'/%3E%3C/svg%3E">
 
 <!--
   UOB IT PMO — internal demo / training tool.
@@ -24,36 +56,51 @@
    1. DESIGN TOKENS
    ============================================================ */
 :root {
-  /* Corporate blue palette (generic — not UOB brand colours) */
-  --blue-900: #0d2a4d;
-  --blue-800: #123a68;
-  --blue-700: #1a4a85;
-  --blue-600: #1f57a4;
-  --blue-100: #e5edf7;
-  --blue-050: #f3f7fc;
+  /* ----------------------------------------------------------
+     Purple scale (generic — not UOB brand colours).
+     --purple-600 #7c3aed carries white text at 5.7:1, so it is
+     safe as a button fill; --purple-900 is the text-on-light
+     tone. Every pairing below was picked to clear WCAG AA 4.5:1.
+     ---------------------------------------------------------- */
+  --purple-950: #2e1065;
+  --purple-900: #4c1d95;
+  --purple-800: #5b21b6;
+  --purple-700: #6d28d9;
+  --purple-600: #7c3aed;
+  --purple-300: #c4b5fd;
+  --purple-100: #ede9fe;
+  --purple-050: #faf5ff;
 
   /* Surfaces & text */
-  --page-bg:   #eef1f5;
+  --page-bg:   #f4f1fa;
   --surface:   #ffffff;
-  --surface-2: #f7f9fc;
-  --border:    #d4dae3;
-  --border-strong: #b6c0cd;
-  --text:      #1b2430;
-  --text-muted:#5b6675;
+  --surface-2: #faf8fd;
+  --border:    #e2ddf0;
+  --border-strong: #c3b8dd;
+  --text:      #1e1b2e;
+  --text-muted:#5c5470;
 
-  /* Priority colours */
-  --pri-critical: #c0392b;
-  --pri-high:     #d68910;
-  --pri-medium:   #1f57a4;
-  --pri-low:      #7a8794;
+  /* ----------------------------------------------------------
+     Priority colours stay deliberately OUTSIDE the purple ramp.
+     Purple is the brand/chrome colour; if "Medium" were also
+     purple, users could not tell brand furniture from data
+     encoding. Each priority also carries a text label, so the
+     colour is reinforcement, never the only signal.
+     ---------------------------------------------------------- */
+  --pri-critical: #be123c;
+  --pri-high:     #b45309;
+  --pri-medium:   #0369a1;
+  --pri-low:      #64748b;
 
   /* Feedback */
-  --success:   #1e7a4d;
-  --success-bg:#e6f4ec;
-  --warn:      #9a6206;
-  --warn-bg:   #fdf3e2;
-  --danger:    #c0392b;
-  --danger-bg: #fbeceb;
+  --success:   #15803d;
+  --success-bg:#e7f6ec;
+  --warn:      #92580a;
+  --warn-bg:   #fdf4e3;
+  --danger:    #be123c;
+  --danger-bg: #fdf0f3;
+  --danger-border: #f3c2ce;
+  --danger-text:   #9f1239;
 
   /* Spacing scale */
   --sp-1: 4px;
@@ -67,9 +114,9 @@
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 10px;
-  --shadow-1: 0 1px 2px rgba(16, 32, 56, .08);
-  --shadow-2: 0 2px 8px rgba(16, 32, 56, .12);
-  --shadow-3: 0 8px 24px rgba(16, 32, 56, .18);
+  --shadow-1: 0 1px 2px rgba(46, 16, 101, .08);
+  --shadow-2: 0 2px 8px rgba(46, 16, 101, .13);
+  --shadow-3: 0 8px 24px rgba(46, 16, 101, .20);
 
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
           Arial, "Noto Sans", sans-serif;
@@ -119,7 +166,7 @@ input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
 [tabindex]:focus-visible {
-  outline: 3px solid var(--blue-600);
+  outline: 3px solid var(--purple-600);
   outline-offset: 2px;
   border-radius: var(--radius-sm);
 }
@@ -138,7 +185,7 @@ textarea:focus-visible,
    3. HEADER — wordmark, summary strip, no-persistence note
    ============================================================ */
 .app-header {
-  background: linear-gradient(180deg, var(--blue-900), var(--blue-800));
+  background: linear-gradient(160deg, var(--purple-950), var(--purple-800));
   color: #fff;
   padding: var(--sp-4) var(--sp-5);
   box-shadow: var(--shadow-2);
@@ -158,13 +205,13 @@ textarea:focus-visible,
   letter-spacing: .04em;
 }
 .wordmark .wordmark-accent {
-  color: #8fb8e8;
+  color: var(--purple-300);
   font-weight: 400;
 }
 
 .header-sub {
   font-size: 12px;
-  color: #b9cbe2;
+  color: #d7ccf5;
 }
 
 .summary-strip {
@@ -185,7 +232,7 @@ textarea:focus-visible,
   border-radius: var(--radius-md);
   padding: var(--sp-2) var(--sp-3);
   font-size: 12px;
-  color: #dce8f6;
+  color: #e4dcf8;
 }
 .summary-item .summary-value {
   font-size: 16px;
@@ -197,12 +244,12 @@ textarea:focus-visible,
   background: rgba(192, 57, 43, .28);
   border-color: rgba(255, 168, 158, .5);
 }
-.summary-item.is-overdue .summary-value { color: #ffd9d4; }
+.summary-item.is-overdue .summary-value { color: #ffd7e0; }
 
 .demo-note {
   margin-top: var(--sp-3);
   font-size: 12px;
-  color: #c6d7ea;
+  color: #d7ccf5;
   display: flex;
   align-items: flex-start;
   gap: var(--sp-2);
@@ -233,7 +280,7 @@ textarea:focus-visible,
 
 .sidebar h2 {
   font-size: 15px;
-  color: var(--blue-900);
+  color: var(--purple-900);
   margin-bottom: var(--sp-1);
 }
 .sidebar .panel-hint {
@@ -251,7 +298,7 @@ textarea:focus-visible,
   display: block;
   font-size: 12px;
   font-weight: 600;
-  color: var(--blue-900);
+  color: var(--purple-900);
   margin-bottom: var(--sp-1);
 }
 .field .req { color: var(--danger); }
@@ -294,14 +341,14 @@ textarea:focus-visible,
 
 .btn-primary {
   width: 100%;
-  background: var(--blue-600);
+  background: var(--purple-600);
   color: #fff;
   font-weight: 600;
   padding: var(--sp-3);
   border-radius: var(--radius-md);
   margin-top: var(--sp-2);
 }
-.btn-primary:hover:not(:disabled) { background: var(--blue-700); }
+.btn-primary:hover:not(:disabled) { background: var(--purple-700); }
 .btn-primary:disabled {
   background: var(--border-strong);
   color: var(--surface-2);
@@ -351,12 +398,12 @@ textarea:focus-visible,
 
 .btn-ghost {
   border-color: var(--border-strong);
-  color: var(--blue-700);
+  color: var(--purple-700);
   font-weight: 600;
   padding: 6px var(--sp-3);
   background: var(--surface);
 }
-.btn-ghost:hover { background: var(--blue-050); }
+.btn-ghost:hover { background: var(--purple-050); }
 
 .filter-status {
   font-size: 12px;
@@ -381,14 +428,33 @@ textarea:focus-visible,
   display: flex;
   flex-direction: column;
   min-height: 180px;
+  overflow: hidden;
   transition: background-color .12s ease, border-color .12s ease;
 }
 
+/* ------------------------------------------------------------
+   Each column gets a coloured rail across its top so the four
+   stages are separable at a glance instead of by reading the
+   heading. The rail is decoration only — the heading text is
+   still the accessible name, so this adds a channel rather than
+   replacing one.
+   ------------------------------------------------------------ */
+.column::before {
+  content: "";
+  display: block;
+  height: 3px;
+  background: var(--column-accent, var(--purple-300));
+}
+.column[data-status="Backlog"]     { --column-accent: #94a3b8; }
+.column[data-status="In Progress"] { --column-accent: var(--purple-600); }
+.column[data-status="Blocked"]     { --column-accent: var(--pri-critical); }
+.column[data-status="Done"]        { --column-accent: var(--success); }
+
 /* Drop-target highlight while dragging a card over a column */
 .column.is-drop-target {
-  background: var(--blue-100);
-  border-color: var(--blue-600);
-  box-shadow: inset 0 0 0 2px var(--blue-600);
+  background: var(--purple-100);
+  border-color: var(--purple-600);
+  box-shadow: inset 0 0 0 2px var(--purple-600);
 }
 
 .column-header {
@@ -397,18 +463,30 @@ textarea:focus-visible,
   justify-content: space-between;
   gap: var(--sp-2);
   padding: var(--sp-3);
+  background: var(--surface);
   border-bottom: 1px solid var(--border);
 }
 .column-title {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
   font-size: 13px;
   font-weight: 700;
-  color: var(--blue-900);
+  color: var(--purple-900);
   letter-spacing: .01em;
+}
+/* Small status dot echoing the column rail, for scanning at speed */
+.column-title::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--column-accent, var(--purple-300));
 }
 .count-badge {
   min-width: 26px;
   text-align: center;
-  background: var(--blue-900);
+  background: var(--purple-900);
   color: #fff;
   font-size: 12px;
   font-weight: 700;
@@ -446,10 +524,21 @@ textarea:focus-visible,
   box-shadow: var(--shadow-1);
   padding: var(--sp-3);
   cursor: grab;
+  /* 180ms sits in the 150-300ms band that reads as responsive
+     rather than sluggish; transform is compositor-only so the
+     lift costs no layout. */
+  transition: box-shadow .18s ease, transform .18s ease, border-color .18s ease;
 }
-.card:hover { box-shadow: var(--shadow-2); }
+.card:hover {
+  box-shadow: var(--shadow-2);
+  border-color: var(--purple-300);
+  transform: translateY(-1px);
+}
 .card:active { cursor: grabbing; }
-.card.is-dragging { opacity: .45; }
+.card.is-dragging {
+  opacity: .45;
+  transform: none;
+}
 
 /* Left border colour-codes priority (pills carry the text label too) */
 .card[data-priority="Critical"] { border-left-color: var(--pri-critical); }
@@ -487,7 +576,7 @@ textarea:focus-visible,
 .card-title {
   font-size: 14px;
   font-weight: 600;
-  color: var(--blue-900);
+  color: var(--purple-900);
   margin: 0 0 var(--sp-2);
   overflow-wrap: anywhere;
 }
@@ -530,22 +619,28 @@ textarea:focus-visible,
   white-space: nowrap;
 }
 .pill-priority[data-priority="Critical"] {
-  background: #fbeceb; color: #8e2a20; border-color: #edb8b2;
+  background: var(--danger-bg); color: var(--danger-text); border-color: var(--danger-border);
 }
 .pill-priority[data-priority="High"] {
-  background: #fdf3e2; color: #8a5806; border-color: #eed7a8;
+  background: var(--warn-bg); color: #8a5307; border-color: #ecd5a4;
 }
 .pill-priority[data-priority="Medium"] {
-  background: var(--blue-100); color: var(--blue-800); border-color: #b7ccea;
+  background: #e0f2fe; color: #075985; border-color: #bae0f7;
 }
 .pill-priority[data-priority="Low"] {
-  background: #eef1f4; color: #4a5563; border-color: #cfd6de;
+  background: #f1f3f6; color: #475569; border-color: #cbd5e1;
 }
 .pill-category {
   background: var(--surface-2);
   color: var(--text-muted);
   border-color: var(--border);
   font-weight: 600;
+  /* Long category names ("Application Development") must not push past
+     the card edge on a narrow column. Truncate inside the pill instead;
+     the full value stays in the title attribute. */
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .pill-due {
   background: var(--surface-2);
@@ -556,8 +651,8 @@ textarea:focus-visible,
 }
 .pill-overdue {
   background: var(--danger-bg);
-  color: #8e2a20;
-  border-color: #edb8b2;
+  color: var(--danger-text);
+  border-color: var(--danger-border);
 }
 
 .card-actions {
@@ -570,20 +665,21 @@ textarea:focus-visible,
 
 .btn-move {
   border-color: var(--border-strong);
-  color: var(--blue-700);
+  color: var(--purple-700);
   font-size: 12px;
   font-weight: 600;
-  padding: 4px var(--sp-2);
+  padding: 4px var(--sp-3);
+  min-height: 24px;
   background: var(--surface);
 }
-.btn-move:hover { background: var(--blue-050); }
+.btn-move:hover { background: var(--purple-050); }
 
 /* Keyboard-accessible move menu (no mouse required) */
 .move-menu {
   margin-top: var(--sp-2);
   padding: var(--sp-2);
-  background: var(--blue-050);
-  border: 1px solid var(--blue-100);
+  background: var(--purple-050);
+  border: 1px solid var(--purple-100);
   border-radius: var(--radius-sm);
   display: flex;
   flex-direction: column;
@@ -599,11 +695,12 @@ textarea:focus-visible,
 .move-option {
   text-align: left;
   font-size: 12px;
-  padding: 4px var(--sp-2);
+  padding: var(--sp-1) var(--sp-2);
+  min-height: 24px;
   border-color: var(--border);
   background: var(--surface);
 }
-.move-option:hover { background: var(--blue-100); }
+.move-option:hover { background: var(--purple-100); }
 
 /* Inline delete confirmation (never a native confirm() dialog) */
 .confirm-row {
@@ -613,11 +710,11 @@ textarea:focus-visible,
   margin-top: var(--sp-2);
   padding: var(--sp-2);
   background: var(--danger-bg);
-  border: 1px solid #edb8b2;
+  border: 1px solid var(--danger-border);
   border-radius: var(--radius-sm);
   font-size: 12px;
   font-weight: 600;
-  color: #8e2a20;
+  color: var(--danger-text);
 }
 .confirm-row .spacer { margin-left: auto; }
 .btn-danger {
@@ -625,15 +722,17 @@ textarea:focus-visible,
   color: #fff;
   font-weight: 600;
   font-size: 12px;
-  padding: 3px var(--sp-3);
+  padding: var(--sp-1) var(--sp-3);
+  min-height: 24px;
 }
-.btn-danger:hover { background: #a32f23; }
+.btn-danger:hover { background: #9f1239; }
 .btn-cancel {
   background: var(--surface);
   border-color: var(--border-strong);
   font-weight: 600;
   font-size: 12px;
-  padding: 3px var(--sp-3);
+  padding: var(--sp-1) var(--sp-3);
+  min-height: 24px;
 }
 
 /* ============================================================
@@ -661,8 +760,8 @@ textarea:focus-visible,
   gap: var(--sp-2);
 }
 .toast-success { background: var(--success-bg); border-color: #b6dcc6; color: var(--success); }
-.toast-warn    { background: var(--warn-bg);    border-color: #eed7a8; color: var(--warn); }
-.toast-info    { background: var(--blue-050);   border-color: #b7ccea; color: var(--blue-800); }
+.toast-warn    { background: var(--warn-bg);    border-color: #ecd5a4; color: var(--warn); }
+.toast-info    { background: var(--purple-050);   border-color: var(--purple-300); color: var(--purple-800); }
 .toast strong { display: block; }
 .toast .toast-close {
   margin-left: auto;
@@ -687,7 +786,11 @@ textarea:focus-visible,
 /* ============================================================
    11. RESPONSIVE
    ============================================================ */
-@media (max-width: 900px) {
+/* Four columns beside a 320px sidebar need roughly 1180px before each
+   column stops being too narrow to read a task title in. Below that the
+   sidebar drops under the board and the columns pair up, rather than
+   four columns squeezing to ~150px and clipping their own pills. */
+@media (max-width: 1180px) {
   .app-main {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -705,6 +808,9 @@ textarea:focus-visible,
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none; }
+  /* Suppress the movement itself, not just its easing — otherwise the
+     card still jumps on hover, it just jumps instantly. */
+  .card:hover { transform: none; }
 }
 </style>
 </head>
@@ -869,7 +975,15 @@ textarea:focus-visible,
 
       <button type="button" class="btn-ghost" id="clear-filters">Clear filters</button>
 
-      <p class="filter-status" id="filter-status"></p>
+      <!--
+        Changing a filter silently re-renders the board, which a screen
+        reader user would otherwise get no feedback from. This is the
+        board's single status region and it always carries a full
+        contextual sentence ("Showing 3 of 8 tasks"), never a bare
+        number. The count badges deliberately stay non-live so they
+        don't compete with it.
+      -->
+      <p class="filter-status" id="filter-status" role="status" aria-atomic="true"></p>
     </form>
 
     <div class="board" id="board">
@@ -938,8 +1052,24 @@ textarea:focus-visible,
      ============================================================ */
   const STATUSES   = ["Backlog", "In Progress", "Blocked", "Done"];
   const PRIORITIES = ["Critical", "High", "Medium", "Low"];
+  const PROJECTS   = ["Core Banking Upgrade", "Digital Channels", "Cybersecurity Uplift",
+                      "Data & Analytics", "Infrastructure & Cloud", "Vendor Management"];
+  const CATEGORIES = ["Application Development", "Infrastructure", "Cybersecurity",
+                      "Data", "Compliance", "Vendor"];
   const ID_PREFIX  = "UOB-ITPM-";
   const TOAST_MS   = 5000;
+
+  /* Private drag payload type — see handleDragStart/handleDrop. */
+  const DRAG_MIME  = "application/x-uob-itpm-task";
+
+  /* The FormSubmit endpoint is public and unauthenticated: anyone
+     reading this file can POST to it. That cannot be fixed from the
+     client, but a cooldown keeps the board itself from becoming a
+     convenient flooding tool and bounds accidental double-submits. */
+  const SUBMIT_COOLDOWN_MS = 2000;
+
+  /* A hung request must not strand the submit button in "Sending…". */
+  const SUBMIT_TIMEOUT_MS  = 10000;
 
   /* ============================================================
      STATE — single source of truth. In memory only: no localStorage,
@@ -952,7 +1082,8 @@ textarea:focus-visible,
     dragTaskId: null,      // id of the card currently being dragged
     movingId: null,        // id of the card whose "Move" menu is open
     confirmingDelete: null,// id of the card showing its delete confirmation
-    pendingFocus: null     // { id, action } to refocus after a re-render
+    pendingFocus: null,    // { id, action } to refocus after a re-render
+    lastSubmitAt: 0        // epoch ms of the last accepted submission
   };
 
   /* ============================================================
@@ -979,6 +1110,20 @@ textarea:focus-visible,
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#39;");
+  }
+
+  /* ------------------------------------------------------------
+     Strip characters that render as nothing but change how the
+     text around them READS: C0/C1 controls, and the Unicode
+     bidirectional overrides used in "Trojan Source" style
+     spoofing (U+202A-U+202E, U+2066-U+2069). escapeHtml() stops
+     markup from executing; this stops a title from lying about
+     what it says. Applied on input, before the value is stored.
+     ------------------------------------------------------------ */
+  const UNSAFE_CHARS = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/g;
+
+  function sanitizeText(value) {
+    return String(value == null ? "" : value).replace(UNSAFE_CHARS, "");
   }
 
   /** Today as a local-time ISO date string (YYYY-MM-DD). */
@@ -1105,7 +1250,8 @@ textarea:focus-visible,
 
         '<div class="card-tags">' +
           '<span class="pill pill-priority" data-priority="' + priority + '">' + priority + "</span>" +
-          '<span class="pill pill-category">' + escapeHtml(task.category) + "</span>" +
+          '<span class="pill pill-category" title="' + escapeHtml(task.category) + '">' +
+            escapeHtml(task.category) + "</span>" +
           '<span class="pill pill-due">Due ' + escapeHtml(formatDate(task.dueDate)) + "</span>" +
           overdueHtml +
         "</div>" +
@@ -1258,27 +1404,41 @@ textarea:focus-visible,
      FORMSUBMIT — AJAX JSON endpoint, so the page never navigates
      ============================================================ */
   async function notifyNewTask(task) {
-    const res = await fetch(FORMSUBMIT_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({
-        _subject: "[UOB IT PMO] New task " + task.id + ": " + task.title,
-        _template: "table",
-        _captcha: "false",
-        "Task ID": task.id,
-        Title: task.title,
-        Description: task.description,
-        Project: task.project,
-        Category: task.category,
-        Assignee: task.assignee,
-        Priority: task.priority,
-        "Due Date": task.dueDate,
-        Status: task.status,
-        "Submitted At": new Date().toISOString()
-      })
-    });
-    if (!res.ok) throw new Error("FormSubmit failed: " + res.status);
-    return res.json();
+    /* Abort rather than hang forever if the endpoint stops responding. */
+    const controller = new AbortController();
+    const timer = window.setTimeout(function () { controller.abort(); }, SUBMIT_TIMEOUT_MS);
+
+    try {
+      const res = await fetch(FORMSUBMIT_ENDPOINT, {
+        method: "POST",
+        signal: controller.signal,
+        /* Send no cookies and no Referer to the third party. */
+        credentials: "omit",
+        referrerPolicy: "no-referrer",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+          _subject: "[UOB IT PMO] New task " + task.id + ": " + task.title,
+          _template: "table",
+          _captcha: "false",
+          "Task ID": task.id,
+          Title: task.title,
+          Description: task.description,
+          Project: task.project,
+          Category: task.category,
+          Assignee: task.assignee,
+          Priority: task.priority,
+          "Due Date": task.dueDate,
+          Status: task.status,
+          "Submitted At": new Date().toISOString()
+        })
+      });
+      if (!res.ok) throw new Error("FormSubmit failed: " + res.status);
+      /* The response body is not used — nothing from this third party
+         is read back into the page. */
+      return true;
+    } finally {
+      window.clearTimeout(timer);
+    }
   }
 
   /* ============================================================
@@ -1307,12 +1467,18 @@ textarea:focus-visible,
 
   /** Returns { ok, values, errors } — never touches the DOM itself. */
   function validateForm() {
+    /* sanitizeText() runs on the three free-text fields before any
+       length check, so a title padded with invisible control
+       characters cannot slip past the 80-character limit. The
+       <select> values are checked against their allowed lists below
+       rather than sanitised, since anything not on the list is
+       rejected outright. */
     const values = {
-      title:       document.getElementById("f-title").value.trim(),
-      description: document.getElementById("f-description").value.trim(),
+      title:       sanitizeText(document.getElementById("f-title").value).trim(),
+      description: sanitizeText(document.getElementById("f-description").value).trim(),
       project:     document.getElementById("f-project").value,
       category:    document.getElementById("f-category").value,
-      assignee:    document.getElementById("f-assignee").value.trim(),
+      assignee:    sanitizeText(document.getElementById("f-assignee").value).trim(),
       priority:    document.getElementById("f-priority").value,
       dueDate:     document.getElementById("f-dueDate").value,
       status:      document.getElementById("f-status").value
@@ -1350,6 +1516,18 @@ textarea:focus-visible,
       errors.status = "Choose a status.";
     }
 
+    /* A <select> is only a hint: the DOM can be edited in devtools, so
+       both list-backed fields are re-checked against their allow-list
+       here rather than trusted because the markup offered no other
+       option. */
+    if (PROJECTS.indexOf(values.project) === -1) {
+      errors.project = "Choose a project from the list.";
+    }
+
+    if (CATEGORIES.indexOf(values.category) === -1) {
+      errors.category = "Choose a category from the list.";
+    }
+
     return { ok: Object.keys(errors).length === 0, values: values, errors: errors };
   }
 
@@ -1359,6 +1537,14 @@ textarea:focus-visible,
   async function handleAddTaskSubmit(event) {
     event.preventDefault();
     clearAllErrors();
+
+    /* Rate limit before validation so a held-down Enter key cannot
+       drive the notification endpoint at keyboard-repeat speed. */
+    const now = Date.now();
+    if (now - state.lastSubmitAt < SUBMIT_COOLDOWN_MS) {
+      showToast("Slow down a moment before adding another task.", "warn");
+      return;
+    }
 
     const result = validateForm();
 
@@ -1382,6 +1568,8 @@ textarea:focus-visible,
       dueDate:     result.values.dueDate,
       status:      result.values.status
     };
+
+    state.lastSubmitAt = Date.now();
 
     // 1. Optimistic: the card is on the board before the network call starts.
     addTask(task);
@@ -1480,7 +1668,11 @@ textarea:focus-visible,
     card.classList.add("is-dragging");
     if (event.dataTransfer) {
       event.dataTransfer.effectAllowed = "move";
-      event.dataTransfer.setData("text/plain", state.dragTaskId);
+      /* Private MIME type, NOT text/plain: any text dragged in from
+         another tab or app also arrives as text/plain, and the drop
+         handler would otherwise treat that foreign string as a task
+         id. Only a drag that started on this board carries this. */
+      event.dataTransfer.setData(DRAG_MIME, state.dragTaskId);
     }
   }
 
@@ -1496,6 +1688,8 @@ textarea:focus-visible,
   function handleDragOver(event) {
     const column = event.target.closest(".column");
     if (!column || !boardEl.contains(column)) return;
+    // No drop affordance for content dragged in from outside the board.
+    if (!state.dragTaskId) return;
     event.preventDefault();
     if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
     if (!column.classList.contains("is-drop-target")) {
@@ -1509,7 +1703,11 @@ textarea:focus-visible,
     if (!column || !boardEl.contains(column)) return;
     event.preventDefault();
 
-    const id = (event.dataTransfer && event.dataTransfer.getData("text/plain")) || state.dragTaskId;
+    /* Trust only a drag this board started: the private MIME type,
+       cross-checked against the id we recorded on dragstart. */
+    const carried = event.dataTransfer ? event.dataTransfer.getData(DRAG_MIME) : "";
+    const id = carried && carried === state.dragTaskId ? carried : null;
+
     clearDropTargets();
     state.dragTaskId = null;
     if (id) moveTask(id, column.getAttribute("data-status"));
