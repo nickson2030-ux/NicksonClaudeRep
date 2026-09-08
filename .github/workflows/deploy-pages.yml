@@ -26,8 +26,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # enablement:true turns Pages on and sets the source to "GitHub Actions"
-      # via the API, so no manual toggle in repo settings is required.
+      # Pages must already be enabled with Source = "GitHub Actions" under
+      # Settings -> Pages. enablement:true asks the API to turn it on, but the
+      # default GITHUB_TOKEN cannot be granted the repo-administration scope
+      # that creating a Pages site requires, so first-time enablement is a
+      # one-off manual step. Once done, this step is a no-op that just reads
+      # the existing Pages config.
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
