@@ -8,9 +8,15 @@ tool. Vanilla HTML, CSS and JavaScript in one file — no framework, no build st
 > This is a demo/training tool, not an official system. It uses a neutral text wordmark and a
 > generic corporate blue palette — no UOB logo, trademarks, or imitation of any real UOB system.
 
+## Live demo
+
+**<https://nickson2030-ux.github.io/NicksonClaudeRep/>** — published from `main` by the
+[Pages workflow](.github/workflows/deploy-pages.yml). The page is the repo root, served as-is.
+
 ## Run it
 
-Open [`index.html`](index.html) directly in a browser — double-click it, or:
+It also runs straight off the filesystem. Open [`index.html`](index.html) directly in a browser —
+double-click it, or:
 
 ```powershell
 Start-Process index.html
