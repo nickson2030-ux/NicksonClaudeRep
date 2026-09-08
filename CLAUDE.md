@@ -12,7 +12,9 @@ dependencies, and no test suite. The repo is on GitHub at
 Git identity is set **repo-locally**, not globally, and uses a GitHub noreply address to keep the
 user's real email out of public commit history — preserve that when committing.
 
-It is deliberately branding-neutral: a text wordmark only, generic corporate blue. Do not add a UOB
+It is deliberately branding-neutral: a text wordmark only, and a generic multi-hue palette (indigo
+and violet chrome, per-column and per-project accent hues) that belongs to no real brand. Colour is
+always paired with a text label, never the sole carrier of meaning. Do not add a UOB
 logo, trademark, or anything that imitates an official UOB system.
 
 ## Running it

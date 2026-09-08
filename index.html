@@ -33,7 +33,7 @@
   no auth, no privileged action, and no data worth framing for.
   ============================================================
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src https://formsubmit.co; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src https://formsubmit.co; form-action 'none'; base-uri 'none'; object-src 'none'; require-trusted-types-for 'script'; trusted-types board-html">
 
 <!-- Do not leak the page URL to FormSubmit in a Referer header. -->
 <meta name="referrer" content="no-referrer">
@@ -91,6 +91,32 @@
   --pri-high:     #b45309;
   --pri-medium:   #0369a1;
   --pri-low:      #64748b;
+
+  /* ----------------------------------------------------------
+     COLUMN HUES — one identity colour per board stage. Each is
+     paired with the column heading text, never used alone.
+     ---------------------------------------------------------- */
+  --col-backlog:      #475569;
+  --col-backlog-bg:   #eef1f6;
+  --col-progress:     #4338ca;
+  --col-progress-bg:  #eaeafc;
+  --col-blocked:      #be123c;
+  --col-blocked-bg:   #fdeaef;
+  --col-done:         #047857;
+  --col-done-bg:      #e4f5ee;
+
+  /* ----------------------------------------------------------
+     PROJECT HUES — six workstreams, six hues. Every chip carries
+     the project NAME, so the colour is a scanning aid rather than
+     the information itself. Each text/background pair below clears
+     WCAG AA 4.5:1 comfortably.
+     ---------------------------------------------------------- */
+  --proj-core-text:   #3730a3;  --proj-core-bg:   #e8e7fd;  --proj-core-bd:   #c7c5f7;
+  --proj-digi-text:   #155e75;  --proj-digi-bg:   #dff4fb;  --proj-digi-bd:   #a9dcee;
+  --proj-cyber-text:  #9f1239;  --proj-cyber-bg:  #fde7ec;  --proj-cyber-bd:  #f5bfcd;
+  --proj-data-text:   #5b21b6;  --proj-data-bg:   #f0e9fe;  --proj-data-bd:   #d5c4fb;
+  --proj-infra-text:  #115e59;  --proj-infra-bg:  #d9f2ef;  --proj-infra-bd:  #9fd9d2;
+  --proj-vendor-text: #92400e;  --proj-vendor-bg: #fdf0dc;  --proj-vendor-bd: #f0d09a;
 
   /* Feedback */
   --success:   #15803d;
@@ -185,7 +211,10 @@ textarea:focus-visible,
    3. HEADER — wordmark, summary strip, no-persistence note
    ============================================================ */
 .app-header {
-  background: linear-gradient(160deg, var(--purple-950), var(--purple-800));
+  /* Multi-stop sweep: indigo into violet into fuchsia. Text sits on the
+     darkest third and stays at #fff, so the extra hues never cost
+     contrast where it matters. */
+  background: linear-gradient(115deg, #1e1b4b 0%, var(--purple-950) 34%, #6d28d9 72%, #a21caf 100%);
   color: #fff;
   padding: var(--sp-4) var(--sp-5);
   box-shadow: var(--shadow-2);
@@ -240,6 +269,11 @@ textarea:focus-visible,
   color: #fff;
   font-variant-numeric: tabular-nums;
 }
+.summary-item[data-summary="Backlog"]     { background: rgba(148, 163, 184, .30); border-color: rgba(203, 213, 225, .55); }
+.summary-item[data-summary="In Progress"] { background: rgba(129, 140, 248, .32); border-color: rgba(165, 180, 252, .60); }
+.summary-item[data-summary="Blocked"]     { background: rgba(244, 63, 94, .28);   border-color: rgba(253, 164, 175, .55); }
+.summary-item[data-summary="Done"]        { background: rgba(52, 211, 153, .28);  border-color: rgba(110, 231, 183, .55); }
+
 .summary-item.is-overdue {
   background: rgba(192, 57, 43, .28);
   border-color: rgba(255, 168, 158, .5);
@@ -445,10 +479,22 @@ textarea:focus-visible,
   height: 3px;
   background: var(--column-accent, var(--purple-300));
 }
-.column[data-status="Backlog"]     { --column-accent: #94a3b8; }
-.column[data-status="In Progress"] { --column-accent: var(--purple-600); }
-.column[data-status="Blocked"]     { --column-accent: var(--pri-critical); }
-.column[data-status="Done"]        { --column-accent: var(--success); }
+.column[data-status="Backlog"] {
+  --column-accent: var(--col-backlog);
+  --column-tint: var(--col-backlog-bg);
+}
+.column[data-status="In Progress"] {
+  --column-accent: var(--col-progress);
+  --column-tint: var(--col-progress-bg);
+}
+.column[data-status="Blocked"] {
+  --column-accent: var(--col-blocked);
+  --column-tint: var(--col-blocked-bg);
+}
+.column[data-status="Done"] {
+  --column-accent: var(--col-done);
+  --column-tint: var(--col-done-bg);
+}
 
 /* Drop-target highlight while dragging a card over a column */
 .column.is-drop-target {
@@ -463,7 +509,9 @@ textarea:focus-visible,
   justify-content: space-between;
   gap: var(--sp-2);
   padding: var(--sp-3);
-  background: var(--surface);
+  /* Tinted with the column's own hue rather than plain white, so each
+     stage is identifiable from the header block alone. */
+  background: var(--column-tint, var(--surface));
   border-bottom: 1px solid var(--border);
 }
 .column-title {
@@ -472,7 +520,7 @@ textarea:focus-visible,
   gap: var(--sp-2);
   font-size: 13px;
   font-weight: 700;
-  color: var(--purple-900);
+  color: var(--column-accent, var(--purple-900));
   letter-spacing: .01em;
 }
 /* Small status dot echoing the column rail, for scanning at speed */
@@ -486,7 +534,7 @@ textarea:focus-visible,
 .count-badge {
   min-width: 26px;
   text-align: center;
-  background: var(--purple-900);
+  background: var(--column-accent, var(--purple-900));
   color: #fff;
   font-size: 12px;
   font-weight: 700;
@@ -642,6 +690,40 @@ textarea:focus-visible,
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* ------------------------------------------------------------
+   Project chips. Keyed off the project name so the mapping lives
+   in CSS rather than being computed in JS; an unrecognised project
+   simply falls through to the neutral .pill-project base, which is
+   still perfectly readable.
+   ------------------------------------------------------------ */
+.pill-project {
+  background: var(--surface-2);
+  color: var(--text-muted);
+  border-color: var(--border);
+  font-weight: 700;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pill-project[data-project="Core Banking Upgrade"] {
+  background: var(--proj-core-bg);   color: var(--proj-core-text);   border-color: var(--proj-core-bd);
+}
+.pill-project[data-project="Digital Channels"] {
+  background: var(--proj-digi-bg);   color: var(--proj-digi-text);   border-color: var(--proj-digi-bd);
+}
+.pill-project[data-project="Cybersecurity Uplift"] {
+  background: var(--proj-cyber-bg);  color: var(--proj-cyber-text);  border-color: var(--proj-cyber-bd);
+}
+.pill-project[data-project="Data & Analytics"] {
+  background: var(--proj-data-bg);   color: var(--proj-data-text);   border-color: var(--proj-data-bd);
+}
+.pill-project[data-project="Infrastructure & Cloud"] {
+  background: var(--proj-infra-bg);  color: var(--proj-infra-text);  border-color: var(--proj-infra-bd);
+}
+.pill-project[data-project="Vendor Management"] {
+  background: var(--proj-vendor-bg); color: var(--proj-vendor-text); border-color: var(--proj-vendor-bd);
+}
+
 .pill-due {
   background: var(--surface-2);
   color: var(--text-muted);
@@ -1058,6 +1140,7 @@ textarea:focus-visible,
                       "Data", "Compliance", "Vendor"];
   const ID_PREFIX  = "UOB-ITPM-";
   const TOAST_MS   = 5000;
+  const MAX_TOASTS = 4;
 
   /* Private drag payload type — see handleDragStart/handleDrop. */
   const DRAG_MIME  = "application/x-uob-itpm-task";
@@ -1101,6 +1184,26 @@ textarea:focus-visible,
   /* ============================================================
      HELPERS
      ============================================================ */
+
+  /* ------------------------------------------------------------
+     TRUSTED TYPES
+     ------------------------------------------------------------
+     The CSP declares require-trusted-types-for 'script', which makes
+     a plain string assignment to .innerHTML throw. Only a TrustedHTML
+     produced by the named "board-html" policy is accepted, and this
+     closure is the only place that policy exists — injected script
+     cannot reach it, so the two innerHTML sinks below stop being
+     usable as XSS sinks at all rather than merely being escaped
+     carefully.
+
+     escapeHtml() is still what makes the string safe; this makes it
+     impossible to forget to call it somewhere new. Browsers without
+     Trusted Types (currently Firefox and Safari) ignore the CSP
+     directive, and the identity fallback keeps them working.
+     ------------------------------------------------------------ */
+  const htmlPolicy = (window.trustedTypes && window.trustedTypes.createPolicy)
+    ? window.trustedTypes.createPolicy("board-html", { createHTML: function (s) { return s; } })
+    : { createHTML: function (s) { return s; } };
 
   /** Escape every user-supplied string before it touches innerHTML. */
   function escapeHtml(value) {
@@ -1242,13 +1345,13 @@ textarea:focus-visible,
         descHtml +
 
         '<div class="card-meta">' +
-          '<span><span class="meta-key">Project:</span> ' +
-            '<span class="meta-val">' + escapeHtml(task.project) + "</span></span>" +
           '<span><span class="meta-key">Assignee:</span> ' +
             '<span class="meta-val">' + escapeHtml(task.assignee) + "</span></span>" +
         "</div>" +
 
         '<div class="card-tags">' +
+          '<span class="pill pill-project" data-project="' + escapeHtml(task.project) + '" ' +
+            'title="Project: ' + escapeHtml(task.project) + '">' + escapeHtml(task.project) + "</span>" +
           '<span class="pill pill-priority" data-priority="' + priority + '">' + priority + "</span>" +
           '<span class="pill pill-category" title="' + escapeHtml(task.category) + '">' +
             escapeHtml(task.category) + "</span>" +
@@ -1283,11 +1386,13 @@ textarea:focus-visible,
       badgeEl.textContent = String(inColumn.length);
       badgeEl.setAttribute("aria-label", inColumn.length + " tasks in " + status);
 
-      listEl.innerHTML = inColumn.length
-        ? inColumn.map(renderCard).join("")
-        : '<p class="column-empty">' +
-            (hasActiveFilters() ? "No tasks match the filters" : "No tasks") +
-          "</p>";
+      listEl.innerHTML = htmlPolicy.createHTML(
+        inColumn.length
+          ? inColumn.map(renderCard).join("")
+          : '<p class="column-empty">' +
+              (hasActiveFilters() ? "No tasks match the filters" : "No tasks") +
+            "</p>"
+      );
     });
 
     renderSummary();
@@ -1325,12 +1430,13 @@ textarea:focus-visible,
 
     items.push({ label: "Overdue", value: overdue, overdueFlag: true });
 
-    summaryEl.innerHTML = items.map(function (item) {
-      return '<li class="summary-item' + (item.overdueFlag ? " is-overdue" : "") + '">' +
+    summaryEl.innerHTML = htmlPolicy.createHTML(items.map(function (item) {
+      return '<li class="summary-item' + (item.overdueFlag ? " is-overdue" : "") + '" ' +
+               'data-summary="' + escapeHtml(item.label) + '">' +
                '<span class="summary-value">' + item.value + "</span>" +
                "<span>" + escapeHtml(item.label) + "</span>" +
              "</li>";
-    }).join("");
+    }).join(""));
   }
 
   function renderFilterStatus(visibleCount) {
@@ -1396,6 +1502,12 @@ textarea:focus-visible,
     toast.appendChild(text);
     toast.appendChild(close);
     toastRegionEl.appendChild(toast);
+
+    /* Keep the stack bounded: a burst of activity should not bury the
+       board under notifications or grow the DOM without limit. */
+    while (toastRegionEl.children.length > MAX_TOASTS) {
+      toastRegionEl.removeChild(toastRegionEl.firstElementChild);
+    }
 
     window.setTimeout(function () { toast.remove(); }, TOAST_MS);
   }

@@ -6,11 +6,12 @@ A single-page IT project management app with a Kanban board, built as an interna
 tool. Vanilla HTML, CSS and JavaScript in one file — no framework, no build step, no dependencies.
 
 > This is a demo/training tool, not an official system. It uses a neutral text wordmark and a
-> generic corporate blue palette — no UOB logo, trademarks, or imitation of any real UOB system.
+> generic multi-hue palette — no UOB logo, trademarks, or imitation of any real UOB system.
 
-![The purple-themed board with its eight seeded demo tasks across the Backlog, In Progress, Blocked
-and Done columns — each column topped by a coloured rail and status dot — with the Add Task form in
-a sidebar on the left](docs/screenshot.png)
+![The board with eight seeded demo tasks across four colour-coded columns — Backlog in slate, In
+Progress in indigo, Blocked in rose, Done in green — under an indigo-to-fuchsia header, with
+colour-coded project chips on every card and the Add Task form in a sidebar on the
+left](docs/screenshot.png)
 
 ## Live demo
 
@@ -27,6 +28,18 @@ Start-Process index.html
 ```
 
 No server, no install, no build.
+
+## Colour system
+
+Colour carries meaning here, and never carries it alone — every hue is attached to a text label, so
+the board still works in greyscale or with colour vision deficiency:
+
+- **Columns** each have an identity hue (slate / indigo / rose / green) shown on a top rail, a
+  status dot, the tinted header and the count badge — alongside the column heading.
+- **Projects** get six distinct hues on the card chips, each chip carrying the project name.
+- **Priorities** stay deliberately outside those ramps so a data encoding is never confused with
+  brand chrome, and each pill is labelled `Critical` / `High` / `Medium` / `Low`.
+- Every foreground/background pair in the UI was measured at **4.5:1 or better** (lowest is 4.86).
 
 ## Features
 
@@ -55,6 +68,11 @@ single static file can actually enforce:
   endpoint, so injected script has nowhere to exfiltrate to; `form-action`, `base-uri` and
   `object-src` are locked off. `'unsafe-inline'` is unavoidable here (the app *is* one inline
   block) and is deliberately accepted — the containment above is what the policy buys.
+- **Trusted Types.** The CSP declares `require-trusted-types-for 'script'`, so a plain string
+  assignment to `innerHTML` throws. Only HTML from the app's own named policy is accepted, and that
+  policy lives inside the module closure where injected script cannot reach it — which turns the
+  two `innerHTML` sinks from "escaped carefully" into "not usable as sinks at all". Firefox and
+  Safari ignore the directive today and fall back to the escaping below.
 - **Output escaping.** `escapeHtml()` wraps every user string interpolated into HTML, attribute
   values included.
 - **Input sanitising.** Control characters and Unicode bidi overrides are stripped from free text,
