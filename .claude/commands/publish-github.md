@@ -1,14 +1,14 @@
 ---
-description: Publish this repo to GitHub — secret scan, push, Pages via Actions, README, and repo About/homepage
+description: Publish this repo to GitHub — secret scan, push, Pages via Actions, screenshot, README, and repo About/homepage
 argument-hint: "[repo URL or owner/name] (optional — omit to use the existing origin)"
-allowed-tools: Bash, Read, Write, Edit, Glob, Grep
+allowed-tools: Bash, Read, Write, Edit, Glob, Grep, mcp__playwright__browser_resize, mcp__playwright__browser_navigate, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_close
 ---
 
 # Publish to GitHub
 
 Target repo (may be empty): $ARGUMENTS
 
-Run steps 1–5 in order. Step 1 gates everything else: nothing is pushed until the secret scan is
+Run steps 1–6 in order. Step 1 gates everything else: nothing is pushed until the secret scan is
 clean. Report progress as you go and finish with the checklist in "Final report".
 
 ## Ground rules
@@ -89,14 +89,39 @@ Report findings as a short table (file, line, what matched, verdict). If anythin
 4. Push the workflow, then verify: `gh run list` if available, otherwise give the user the Actions
    URL and `curl -sI https://<owner>.github.io/<name>/` to confirm a 200 once the run finishes.
    The first publish can take a couple of minutes.
-5. Record the live URL — `https://<owner>.github.io/<name>/` — for steps 4 and 5.
+5. Record the live URL — `https://<owner>.github.io/<name>/` — for steps 4, 5 and 6.
 
-## Step 4 — Create or update the README
+## Step 4 — Capture a screenshot of the live site
+
+Use the **Playwright MCP** tools (configured project-level in [.mcp.json](../../.mcp.json)) to
+photograph the deployed page, so the README shows the app rather than only describing it.
+
+1. If the Playwright tools are unavailable — the MCP server is not connected, or Node is missing —
+   say so, skip to step 5, and keep whatever screenshot is already committed. Never fabricate or
+   hand-edit an image, and do not let this step block the rest of the run.
+2. `browser_resize` to **1440×900** first, then `browser_navigate` to the live Pages URL from
+   step 3. Screenshot the *deployed* site, not `file:///` — the point is to show what a visitor
+   sees. If Pages is not live yet, fall back to the local `index.html` and say so in the report.
+3. `browser_take_screenshot` with `fullPage: true`, `scale: "css"`, and filename `screenshot.png`.
+   Full-page matters here: the board's four columns run past the fold.
+4. **Look at the image with the Read tool before committing it.** Check the board rendered with its
+   seeded tasks, no error toast is showing, and no personal data is visible. A broken or empty
+   board in the README is worse than none.
+5. Move it to `docs/screenshot.png`, overwriting the previous one, and `browser_close`.
+6. Ensure `.gitignore` covers `.playwright-mcp/` — the server drops snapshot scratch files there.
+
+A binary in the repo does not violate the "zero external resources" constraint: that rule is about
+what `index.html` loads at runtime. The screenshot is documentation, referenced only by the README.
+Keep it under ~500 KB.
+
+## Step 5 — Create or update the README
 
 Read `README.md` first and edit it rather than replacing it wholesale. It should cover, accurately:
 
 - Project name and a one-line description
 - The demo/training disclaimer (no UOB branding, not an official system)
+- The `docs/screenshot.png` from step 4, embedded near the top, with alt text that describes what
+  the board actually shows — not just "screenshot"
 - **Live demo** link to the Pages URL from step 3
 - How to run locally (open `index.html`; no server, no build, no install)
 - What it does, and the constraints a reader cares about: single file, vanilla, no persistence —
@@ -104,7 +129,7 @@ Read `README.md` first and edit it rather than replacing it wholesale. It should
 
 No badges pointing at services the repo does not use, and no claims you have not verified.
 
-## Step 5 — Update the repo About and homepage link
+## Step 6 — Update the repo About and homepage link
 
 Set the description, the homepage to the Pages URL, and a few topics.
 
@@ -126,6 +151,7 @@ End with a checklist and real URLs:
 - Secret scan: clean, or the findings
 - Pushed: commit SHA and branch
 - Pages: workflow run status and live URL
+- Screenshot: captured and refreshed / reused / skipped (say why)
 - README: created / updated / unchanged
 - About: set via gh, via API, or left to the user (with the steps)
 

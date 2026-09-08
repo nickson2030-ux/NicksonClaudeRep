@@ -8,6 +8,9 @@ tool. Vanilla HTML, CSS and JavaScript in one file — no framework, no build st
 > This is a demo/training tool, not an official system. It uses a neutral text wordmark and a
 > generic corporate blue palette — no UOB logo, trademarks, or imitation of any real UOB system.
 
+![The board with its eight seeded demo tasks across the Backlog, In Progress, Blocked and Done
+columns, with the Add Task form on the left](docs/screenshot.png)
+
 ## Live demo
 
 **<https://nickson2030-ux.github.io/NicksonClaudeRep/>** — published from `main` by the
