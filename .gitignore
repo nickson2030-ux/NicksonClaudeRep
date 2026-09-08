@@ -1,0 +1,20 @@
+# Secrets — never commit these
+.env
+.env.*
+*.pem
+*.key
+*.pfx
+*.p12
+id_rsa*
+credentials
+
+# Local Claude Code settings (personal, not shared)
+.claude/settings.local.json
+
+# Editor / OS cruft
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+*.swp
+*~
